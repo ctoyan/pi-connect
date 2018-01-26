@@ -13,6 +13,12 @@ loginURL="${APIURL}/user/login/${USERNAME}/${PASSWORD}"
 deviceListURL="${APIURL}/device/list/all"
 deviceConnectURL="${APIURL}/device/connect"
 
+testSystem() {
+	command -v jq 2>&1 >/dev/null || { echo >&2 "Please install jq. Aborting."; exit 1; }
+	command -v ssh 2>&1 >/dev/null || { echo >&2 "Please install ssh. Aborting."; exit 1; }
+	command -v curl 2>&1 >/dev/null || { echo >&2 "Please install curl. Aborting."; exit 1; }
+}
+
 handleError() {
     requestStatus=$(echo $1 | jq -r '.status')
     if [ $requestStatus = false ]
@@ -38,6 +44,9 @@ connectToDevice() {
     read sshUsername
     ssh $sshUsername@$host -p $port
 }
+
+#CHECK DEPENDENCIES
+testSystem
 
 #LOGIN AND GET TOKEN
 echo "[*] Logging in..."
