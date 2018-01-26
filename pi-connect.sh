@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 #CONFIGURATION
 APIKEY="WeavedDemoKey\$2015"
