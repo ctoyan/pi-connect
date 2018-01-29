@@ -5,8 +5,19 @@ set -e
 APIKEY="WeavedDemoKey\$2015"
 USERNAME="your@email.com"
 
-echo "[-] Please enter your password: "
-read -s PASSWORD
+#LOAD EXTERNAL VARIABLES
+if ! [ -z "$WEAVED_PASSWORD" ]; then
+	PASSWORD="$WEAVED_PASSWORD"
+fi
+if ! [ -z "$WEAVED_USERNAME" ]; then
+	USERNAME="$WEAVED_USERNAME"
+fi
+
+#ASK FOR PASSWORD
+if [ -z "$PASSWORD" ]; then	
+	echo "[-] Please enter your password: "
+	read -s PASSWORD
+fi
 
 #CONSTRUCT API URLS
 APIURL="https://api.weaved.com/v22/api"
@@ -18,6 +29,15 @@ testSystem() {
 	command -v jq 2>&1 >/dev/null || { echo >&2 "Please install jq. Aborting."; exit 1; }
 	command -v ssh 2>&1 >/dev/null || { echo >&2 "Please install ssh. Aborting."; exit 1; }
 	command -v curl 2>&1 >/dev/null || { echo >&2 "Please install curl. Aborting."; exit 1; }
+}
+
+firstNonEmpty() {
+	for var in "$@"; do
+		if ! [ -z "$var" ]; then
+			echo "$var"
+			break
+        fi
+    done
 }
 
 handleError() {
@@ -75,18 +95,22 @@ then
     done
 
     chosenDeviceNumber=""
-    while true
-    do
-        printf "\n%s" "[-] Number of the device you want to connect to: "
-        read chosenDeviceNumber
+	if [ -z "$SSH_DEVICE_NUMBER" ]; then
+		while true
+		do
+			printf "\n%s" "[-] Number of the device you want to connect to: "
+			read chosenDeviceNumber
 
-        if [[  $chosenDeviceNumber -gt 0 && $chosenDeviceNumber -le $numberOfDevices ]]
-        then
-            break
-        else
-            echo "Please choose a number between 1 and $numberOfDevices"
-        fi
-    done
+			if [[  $chosenDeviceNumber -gt 0 && $chosenDeviceNumber -le $numberOfDevices ]]
+			then
+				break
+			else
+				echo "Please choose a number between 1 and $numberOfDevices"
+			fi
+		done
+	else
+		chosenDeviceNumber="$SSH_DEVICE_NUMBER"
+	fi
 
     connectToDevice "$devicesListResponse" $(($chosenDeviceNumber-1))
 else
