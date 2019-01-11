@@ -1,17 +1,44 @@
 #!/bin/bash
+set -e
 
 #CONFIGURATION
 APIKEY="WeavedDemoKey\$2015"
 USERNAME="your@email.com"
 
-echo "[-] Please enter your password: "
-read -s PASSWORD
+#LOAD EXTERNAL VARIABLES
+if ! [ -z "$WEAVED_PASSWORD" ]; then
+	PASSWORD="$WEAVED_PASSWORD"
+fi
+if ! [ -z "$WEAVED_USERNAME" ]; then
+	USERNAME="$WEAVED_USERNAME"
+fi
+
+#ASK FOR PASSWORD
+if [ -z "$PASSWORD" ]; then	
+	echo "[-] Please enter your password: "
+	read -s PASSWORD
+fi
 
 #CONSTRUCT API URLS
 APIURL="https://api.weaved.com/v22/api"
 loginURL="${APIURL}/user/login/${USERNAME}/${PASSWORD}"
 deviceListURL="${APIURL}/device/list/all"
 deviceConnectURL="${APIURL}/device/connect"
+
+testSystem() {
+	command -v jq 2>&1 >/dev/null || { echo >&2 "Please install jq. Aborting."; exit 1; }
+	command -v ssh 2>&1 >/dev/null || { echo >&2 "Please install ssh. Aborting."; exit 1; }
+	command -v curl 2>&1 >/dev/null || { echo >&2 "Please install curl. Aborting."; exit 1; }
+}
+
+firstNonEmpty() {
+	for var in "$@"; do
+		if ! [ -z "$var" ]; then
+			echo "$var"
+			break
+        fi
+    done
+}
 
 handleError() {
     requestStatus=$(echo $1 | jq -r '.status')
@@ -39,6 +66,9 @@ connectToDevice() {
     ssh $sshUsername@$host -p $port
 }
 
+#CHECK DEPENDENCIES
+testSystem
+
 #LOGIN AND GET TOKEN
 echo "[*] Logging in..."
 loginResponse=$(curl -s -S -X GET -H "content-type:application/json" -H "apikey:${APIKEY}" $loginURL)
@@ -65,18 +95,22 @@ then
     done
 
     chosenDeviceNumber=""
-    while true
-    do
-        printf "\n%s" "[-] Number of the device you want to connect to: "
-        read chosenDeviceNumber
+	if [ -z "$SSH_DEVICE_NUMBER" ]; then
+		while true
+		do
+			printf "\n%s" "[-] Number of the device you want to connect to: "
+			read chosenDeviceNumber
 
-        if [[  $chosenDeviceNumber -gt 0 && $chosenDeviceNumber -le $numberOfDevices ]]
-        then
-            break
-        else
-            echo "Please choose a number between 1 and $numberOfDevices"
-        fi
-    done
+			if [[  $chosenDeviceNumber -gt 0 && $chosenDeviceNumber -le $numberOfDevices ]]
+			then
+				break
+			else
+				echo "Please choose a number between 1 and $numberOfDevices"
+			fi
+		done
+	else
+		chosenDeviceNumber="$SSH_DEVICE_NUMBER"
+	fi
 
     connectToDevice "$devicesListResponse" $(($chosenDeviceNumber-1))
 else
